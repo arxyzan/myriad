@@ -4,12 +4,19 @@ from langchain_core.documents import Document
 
 from .base_loader import BaseLoader
 
+@BaseLoader.register("textbook")
 class TextbookLoader(BaseLoader):
     """
     Load a textbook file or files into Document objects.
     """
 
-    def __init__(self, path: str, metadata: dict = None, chapter_splitter: str = None, min_doc_len: int = 10):
+    def __init__(
+        self,
+        path: str,
+        metadata: dict = None,
+        chapter_splitter: str = None,
+        min_doc_len: int = 10,
+    ):
         super().__init__(path)
         self.chapter_splitter = chapter_splitter
         self.metadata = metadata or {}
