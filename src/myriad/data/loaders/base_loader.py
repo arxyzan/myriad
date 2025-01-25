@@ -1,7 +1,35 @@
 class BaseLoader:
-    def __init__(self, source):
+    registry = {}
+
+    def __init__(self, source, *args, **kwargs):
         self.source = source
-        self.documents = []
+
+    @classmethod
+    def register(cls, name):
+        """
+        Class method to register a subclass with a given name in the `registry` dictionary of the base class.
+
+        Args:
+            name (str): The name to register the subclass with.
+        """
+        def decorator(subclass):
+            if name in cls.registry:
+                raise ValueError(f"Class with name '{name}' is already registered.")
+            if not issubclass(subclass, cls):
+                raise TypeError(f"Registered class '{subclass.__name__}' must be a subclass of '{cls.__name__}'.")
+            cls.registry[name] = subclass
+            return subclass
+
+        return decorator
+
+    @classmethod
+    def create(name, *args, **kwargs):
+        """
+        Create the loader instance based on the name provided in the `registry`.
+        """
+        if name not in BaseLoader.registry:
+            raise ValueError(f"Unknown loader: '{name}'.")
+        return BaseLoader.registry[name](*args, **kwargs)
 
     def load(self):
         """
@@ -9,8 +37,9 @@ class BaseLoader:
         This is the main method to be invoked by the user.
         """
         raw_documents = self.read()
-        self.documents = self.process(raw_documents)
-        return self.documents
+        documents = self.process(raw_documents)
+        documents = self.split(documents)
+        return documents
 
     def read(self):
         """
@@ -19,19 +48,18 @@ class BaseLoader:
         """
         raise NotImplementedError("Subclasses must implement this method")
 
-    def process(self, raw_documents):
+    def process(self, raw_documents, **kwargs):
         """
         Process raw documents into a structured format.
         This method can be overridden by subclasses for custom processing.
         """
-        # Default processing logic (can be customized)
         return raw_documents
 
-    def split(self, documents, chunk_size):
+    def split(self, documents, chunk_size, **kwargs):
         """
         Split documents into smaller chunks.
         """
         chunks = []
         for doc in documents:
-            chunks.extend([doc[i:i + chunk_size] for i in range(0, len(doc), chunk_size)])
+            chunks.extend([doc[i : i + chunk_size] for i in range(0, len(doc), chunk_size)])
         return chunks
