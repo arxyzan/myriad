@@ -1,50 +1,51 @@
+from dataclasses import dataclass
 import os
 
 from langchain_core.documents import Document
 
-from .base_loader import BaseLoader
+from ...config import Config
+from .document_loader import DocumentLoader
 
-@BaseLoader.register("textbook")
-class TextbookLoader(BaseLoader):
+
+@dataclass
+class TextbookLoaderConfig(Config):
+    source: str = None
+    metadata: dict = None
+    chapter_splitter: str = None
+    min_doc_len: int = 10
+
+@DocumentLoader.register("textbook", config_class=TextbookLoaderConfig)
+class TextbookLoader(DocumentLoader):
     """
     Load a textbook file or files into Document objects.
     """
 
-    def __init__(
-        self,
-        path: str,
-        metadata: dict = None,
-        chapter_splitter: str = None,
-        min_doc_len: int = 10,
-    ):
-        super().__init__(path)
-        self.chapter_splitter = chapter_splitter
-        self.metadata = metadata or {}
-        self.min_doc_len = min_doc_len
+    def __init__(self, config: TextbookLoaderConfig, **kwargs):
+        super().__init__(config=config, **kwargs)
 
     def read(self):
         docs = []
         # Load all files in the directory
-        if os.path.isdir(self.source):
-            for root, _, files in os.walk(self.source):
+        if os.path.isdir(self.config.source):
+            for root, _, files in os.walk(self.config.source):
                 for file in files:
                     with open(os.path.join(root, file), "r") as f:
                         text = f.read()
-                    self.metadata.update({"source": os.path.join(self.source, file)})
-                    docs.append({"text": text, "metadata": self.metadata.copy()})
+                    self.config.metadata.update({"source": os.path.join(self.config.source, file)})
+                    docs.append({"text": text, "metadata": self.config.metadata.copy()})
         # Load a single file
-        elif os.path.isfile(self.source):
-            with open(self.source, "r") as f:
+        elif os.path.isfile(self.config.source):
+            with open(self.config.source, "r") as f:
                 text = f.read()
-            self.metadata.update({"source": self.source})
-            docs.append({"text": text, "metadata": self.metadata.copy()})
+            self.config.metadata.update({"source": self.config.source})
+            docs.append({"text": text, "metadata": self.config.metadata.copy()})
         return docs
 
-    def split(self, raw_documents):
+    def split(self, documents):
         split_docs = []
-        for doc in raw_documents:
-            for chapter in doc["text"].split(self.chapter_splitter):
-                if len(chapter) < self.min_doc_len:
+        for doc in documents:
+            for chapter in doc["text"].split(self.config.chapter_splitter):
+                if len(chapter) < self.config.min_doc_len:
                     continue
                 split_docs.append({"text": chapter, "metadata": doc["metadata"]})
         return split_docs
